@@ -7,7 +7,10 @@ from langchain_community.vectorstores import Chroma
 from langchain_groq import ChatGroq
 from langchain_openai import OpenAIEmbeddings
 from llama_parse import LlamaParse
-from langchain_community.document_loaders import UnstructuredMarkdownLoader
+from llama_index.core.node_parser import MarkdownElementNodeParser
+from llama_index.core.memory import ChatMemoryBuffer
+from llama_index.core import VectorStoreIndex
+from llama_index.llms.openai import OpenAI
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
@@ -54,15 +57,8 @@ if 'prompt' not in st.session_state:
     )
     
 if 'memory' not in st.session_state:
-    st.session_state.memory = ConversationBufferMemory(
-        memory_key ="history",
-        return_key =True,
-        input_key ="question"
-    )
+    st.session_state.memory = ChatMemoryBuffer.from_defaults(token_limit=2000)
 
-if 'vectorstore' not in st.session_state:
-    st.session_state.vectorstore = Chroma(persist_directory = "vectorDb",
-                                          embedding_function = OpenAIEmbeddings())
     
 if 'llm' not in st.session_state:
     st.session_state.llm = ChatGroq(groq_api_key = groq_api_key,
@@ -71,7 +67,6 @@ if 'llm' not in st.session_state:
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
     
-
 
 st.title("Query your PDFs")
 uploaded_files = st.file_uploader("Choose PDF file(s)",type = "pdf", accept_multiple_files=True)
@@ -118,39 +113,21 @@ if (uploaded_files != [] and uploaded_files is not None):
                         f.write(doc.text + "\n")
                 
                 st.text("Parsing Complete")
-                markdown_path = "parsedPdfFiles/output.md"
-                loader = UnstructuredMarkdownLoader(markdown_path)
-                documents = loader.load()
 
-                text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size = 1500,
-                chunk_overlap = 200,
-                length_function = len 
-                )
-                
-                all_splits = text_splitter.split_documents(documents)
-                
-                st.session_state.vectorstore = Chroma.from_documents(
-                    documents= all_splits,
-                    embedding= OpenAIEmbeddings()
-                )
-                
-                st.session_state.vectorstore.persist()
-            
-    st.session_state.retriever = st.session_state.vectorstore.as_retriever()
+    markdown_path = "parsedPdfFiles/output.md"
+    node_parser = MarkdownElementNodeParser(llm=OpenAI(model="gpt-3.5-turbo"), num_workers=4)
+    nodes = node_parser.get_nodes_from_documents(documents=[markdown_path])
+    base_nodes, objects = node_parser.get_nodes_and_objects(nodes)       
+    st.session_state.index = VectorStoreIndex(nodes=base_nodes+objects)
     
-    if 'qa_chain' not in st.session_state:
-        st.session_state.qa_chain = RetrievalQA.from_chain_type(
+    if 'chat_engine' not in st.session_state:
+        st.session_state.chat_engine = st.session_state.index.as_chat_engine(
+            chat_mode = "context",
             llm = st.session_state.llm,
-            chain_type = "stuff",
-            retriever = st.session_state.retriever,
-            verbose = True,
-            chain_type_kwargs = {
-                "verbose" : True,
-                "prompt"  : st.session_state.prompt, 
-                "memory"  : st.session_state.memory
-            }
+            memory = st.session_state.memory,
+            system_prompt = st.session_state.prompt
         )
+        
         
     if user_input := st.chat_input("You:", key="user_input"):
        user_message = {"role": "user", "message": user_input}
@@ -161,7 +138,7 @@ if (uploaded_files != [] and uploaded_files is not None):
 
        with st.chat_message("assistant"):
            with st.spinner("Assistant is typing..."):
-               response = st.session_state.qa_chain(user_input)
+               response = st.session_state.chat_engine.chat(user_input)
            message_placeholder = st.empty()
            full_response = ""
            for chunk in response['result'].split():

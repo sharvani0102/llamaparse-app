@@ -15,3 +15,4 @@ pysqlite3-binary
 llama-parse
 fastembed
 unstructured[md]
+llama_index
