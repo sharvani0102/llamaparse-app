@@ -16,3 +16,4 @@ llama-parse
 fastembed
 unstructured[md]
 llama_index
+llama-index-llms-langchain

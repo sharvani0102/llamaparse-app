@@ -97,6 +97,7 @@ def load_or_parse_data(uploaded_file):
 
 if (uploaded_files != [] and uploaded_files is not None):
     #st.text("Files Uploaded Successfully")
+    parsed_docs = []
     for uploaded_file in uploaded_files:
         #st.text("Name of file to be uploaded : " + uploaded_file.name)
         #st.text(os.path.exists(("pdfFiles/"+uploaded_file.name)))
@@ -108,15 +109,18 @@ if (uploaded_files != [] and uploaded_files is not None):
                 file.close()
                 
                 llama_parsed_documents = load_or_parse_data(uploaded_file)
+                parsed_docs = parsed_docs + llama_parsed_documents
+                st.text(llama_parsed_documents)
                 with open('parsedPdfFiles/output.md', 'a') as f:
                     for doc in llama_parsed_documents:
+                        st.text(doc)
                         f.write(doc.text + "\n")
                 
                 st.text("Parsing Complete")
 
-    markdown_path = "parsedPdfFiles/output.md"
+    st.text(parsed_docs)
     node_parser = MarkdownElementNodeParser(llm=OpenAI(model="gpt-3.5-turbo"), num_workers=4)
-    nodes = node_parser.get_nodes_from_documents(documents=[markdown_path])
+    nodes = node_parser.get_nodes_from_documents(documents=parsed_docs)
     base_nodes, objects = node_parser.get_nodes_and_objects(nodes)       
     st.session_state.index = VectorStoreIndex(nodes=base_nodes+objects)
     
