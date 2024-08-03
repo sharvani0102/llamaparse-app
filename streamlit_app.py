@@ -16,6 +16,11 @@ nest_asyncio.apply()
 
 groq_api_key= st.secrets["groq_api_key"]["my_key"]
 llama_parse_key = st.secrets["llama_index_key"]["llama_key"]
+progress = "false"
+
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 if not os.path.exists('pdfFiles'):
     os.mkdir("pdfFiles")
