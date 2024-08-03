@@ -10,8 +10,6 @@ torch
 InstructorEmbedding
 pypdf
 cryptography
-chromadb
-pysqlite3-binary
 llama-parse
 fastembed
 unstructured[md]
