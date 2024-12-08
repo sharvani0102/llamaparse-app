@@ -1,4 +1,4 @@
-###Advanced RAG PDF ChatBot Using LLMs (GenAI)###
+##Advanced RAG PDF ChatBot Using LLMs (GenAI) ##
 
 Objective:
 Create a chatbot capable of interacting with personal confidential PDF documents using Retrieval-Augmented Generation (RAG) models. The bot leverages advanced Natural Language Processing (NLP) techniques, vector databases, and large language models to process and answer complex queries from PDF documents containing text, tables, charts, and diagrams.
